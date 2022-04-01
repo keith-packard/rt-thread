@@ -25,12 +25,24 @@ import os
 import re
 import platform
 
+def GetGCCLibc(rtconfig):
+    try:
+        rtconfig.LIBC
+    except AttributeError:
+        rtconfig.LIBC = 'newlib'
+    return rtconfig.LIBC
+
 def GetGCCRoot(rtconfig):
     exec_path = rtconfig.EXEC_PATH
     prefix = rtconfig.PREFIX
 
     if prefix.endswith('-'):
         prefix = prefix[:-1]
+
+    libc = GetGCCLibc(rtconfig)
+
+    if libc != 'newlib':
+        prefix = os.path.join(libc, prefix)
 
     if exec_path == '/usr/bin':
         root_path = os.path.join('/usr/lib', prefix)
@@ -86,6 +98,19 @@ def GetNewLibVersion(rtconfig):
             f.close()
     return version
 
+def GetPicolibcVersion(rtconfig):
+    version = 'unknown'
+    root = GetGCCRoot(rtconfig)
+
+    if CheckHeader(rtconfig, 'picolibc.h'): # get version from picolibc.h file
+        f = open(os.path.join(root, 'include', 'picolibc.h'), 'r')
+        if f:
+            for line in f:
+                if line.find('_PICOLIBC_VERSION') != -1 and line.find('"') != -1:
+                    version = re.search(r'\"([^"]+)\"', line).groups()[0]
+            f.close()
+    return version
+
 def GCCResult(rtconfig, str):
     import subprocess
 
@@ -104,11 +129,21 @@ def GCCResult(rtconfig, str):
         f.write(str)
         f.close()
 
+        libc = GetGCCLibc(rtconfig)
+
+        libc_specs = '--specs=' + libc + '.specs'
+
         # '-fdirectives-only',
         if(platform.system() == 'Windows'):
-            child = subprocess.Popen([gcc_cmd, '-E', '-P', '__tmp.c'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+            specs = []
+            if libc != 'newlib':
+                specs = [libc_specs]
+            child = subprocess.Popen([gcc_cmd, '-E', '-P', '__tmp.c'] + specs, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
         else:
-            child = subprocess.Popen(gcc_cmd + ' -E -P __tmp.c', stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+            specs = ''
+            if libc != 'newlib':
+                specs = ' ' + libc_specs
+            child = subprocess.Popen(gcc_cmd + ' -E -P __tmp.c' + specs, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
 
         stdout, stderr = child.communicate()
 
@@ -180,7 +215,11 @@ def GenerateGCCConfig(rtconfig):
     cc_header += '/* Automatically generated file; DO NOT EDIT. */\n'
     cc_header += '/* compiler configure file for RT-Thread in GCC*/\n\n'
 
-    if CheckHeader(rtconfig, 'newlib.h'):
+    if CheckHeader(rtconfig, 'picolibc.h'):
+        str += '#include <picolibc.h>\n'
+        cc_header += '#define HAVE_PICOLIBC_H 1\n'
+        cc_header += '#define LIBC_VERSION "picolibc %s"\n\n' % GetPicolibcVersion(rtconfig)
+    elif CheckHeader(rtconfig, 'newlib.h'):
         str += '#include <newlib.h>\n'
         cc_header += '#define HAVE_NEWLIB_H 1\n'
         cc_header += '#define LIBC_VERSION "newlib %s"\n\n' % GetNewLibVersion(rtconfig)
