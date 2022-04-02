@@ -4,6 +4,7 @@ import os
 ARCH        ='risc-v'
 CPU         ='virt64'
 CROSS_TOOL  ='gcc'
+LIBC        ='picolibc'
 
 if os.getenv('RTT_ROOT'):
     RTT_ROOT = os.getenv('RTT_ROOT')
@@ -15,7 +16,7 @@ if os.getenv('RTT_CC'):
 
 if  CROSS_TOOL == 'gcc':
     PLATFORM    = 'gcc'
-    EXEC_PATH   = r'/home/lizhirui/workspace/riscv64-toolchains/bin'
+    EXEC_PATH   = r'/usr/bin'
 else:
     print('Please make sure your toolchains is GNU GCC!')
     exit(0)

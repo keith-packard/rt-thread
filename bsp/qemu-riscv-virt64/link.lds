@@ -74,6 +74,23 @@ SECTIONS
         _etext = .;
     } > SRAM
 
+    . = ALIGN(8);
+    .tdata : {
+	*(.tdata)
+	*(.tdata.*)
+	*(.gnu.linkonce.td.*)
+    } > SRAM
+
+    .tbss (NOLOAD) : {
+	*(.tbss .tbss.* .gnu.linkonce.tb.*)
+	*(.tcommon)
+    } > SRAM
+
+    __tdata_source = ADDR(.tdata);
+    __tdata_size = SIZEOF(.tdata);
+    __tbss_size = SIZEOF(.tbss);
+    __tls_size = SIZEOF(.tdata) + SIZEOF(.tbss);
+
     .eh_frame_hdr : 
     { 
          *(.eh_frame_hdr) 
