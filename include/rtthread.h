@@ -578,6 +578,10 @@ int rt_kprintf(const char *fmt, ...);
 void rt_kputs(const char *str);
 #endif
 
+#ifndef RT_USING_PICOLIBC
+#undef RT_KSERVICE_USING_PRINTF
+#endif
+
 #ifdef RT_KSERVICE_USING_PRINTF
 #include <stdio.h>
 #define rt_vsprintf(d,f,a) vsprintf(d,f,a)
